@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS dmg calc_blackgold edition</title>
+    <style>
+        /* =========================================
+           기본 배경 및 레이아웃
+           ========================================= */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0a0a0a;
+            background-image: 
+                radial-gradient(circle at 48% 52%, #151515 0%, #0a0a0a 100%),
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 4px);
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            touch-action: manipulation;
+            overflow-x: auto; 
+            overflow-y: auto;
+            padding: 30px 20px;
+            box-sizing: border-box;
+            min-width: 1160px; 
+        }
+        
+        .dashboard-wrapper {
+            display: flex;
+            flex-wrap: nowrap; 
+            justify-content: center;
+            align-items: flex-start;
+            gap: 22px;
+            width: max-content;
+        }
+
+        @media (pointer: coarse), (max-width: 1160px) {
+            body, .dashboard-wrapper {
+                align-items: center;
+            }
+        }
+
+        /* 패널 질감 */
+        .panel {
+            background: #1c1c1c;
+            padding: 26px 20px;
+            box-shadow: 0 30px 50px -10px rgba(0,0,0,0.9), inset 0 0 15px rgba(0,0,0,0.6);
+            box-sizing: border-box;
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #3c3427;
+            border-right: 1px solid #2b251a;
+            border-bottom: 1px solid #1a1710;
+            border-left: 1px solid #30281e;
+        }
+
+        .panel-preset { width: 340px; border-radius: 4px; transform: rotate(-0.35deg); min-height: 520px; }
+        .panel-calculator { width: 380px; border-radius: 4px; transform: rotate(0.25deg); min-height: 550px; }
+        .panel-roster { width: 360px; border-radius: 4px; transform: rotate(-0.15deg); min-height: 490px; }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #332e24;
+        }
+        
+        .top-btns { display: flex; gap: 8px; }
+        
+        h2 {
+            color: #f4edd8;
+            margin: 0;
+            font-size: 19px;
+            letter-spacing: -0.2px;
+            font-weight: 700;
+        }
+
+        .orange-gradient-text {
+            background: linear-gradient(135deg, #ffa726 0%, #f57c00 50%, #e65100 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 4px rgba(230, 81, 0, 0.4);
+        }
+        
+        .action-btn {
+            background: #252525;
+            border: 1px solid #3a3a3a;
+            color: #a0a0a0;
+            padding: 6px 10px;
+            border-radius: 3px 4px 2px 3px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.1s, color 0.1s;
+        }
+        .action-btn.clickable { cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+        .action-btn.clickable:hover { background: #333; color: #fff; }
+        
+        .reset-container { padding: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+        .reset-hitbox { display: inline-block; pointer-events: auto; padding: 6px 10px; margin: 0; color: #a87e7e; cursor: pointer; transition: color 0.1s; font-weight: bold; }
+        .reset-hitbox:hover { color: #ff8c8c; }
+
+        .search-container { margin-bottom: 12px; }
+        .search-input-wrapper { position: relative; width: 100%; }
+        .search-input {
+            width: 100%; padding: 8px 35px 8px 10px; box-sizing: border-box; background: #1a1a1a;
+            border: 1px solid #443c2f; color: #fff; border-radius: 3px; font-size: 14px; transition: all 0.2s ease;
+        }
+        .search-input::placeholder { color: #888; }
+        .search-input:focus {
+            background: #22201c;
+            border-color: #ff8c00;
+            color: #ffffff; outline: none;
+            box-shadow: 0 0 10px rgba(255, 140, 0, 0.3);
+        }
+        .search-clear-btn {
+            position: absolute; right: 0; top: 0; height: 100%; width: 38px; display: none; align-items: center;
+            justify-content: center; color: #999; font-size: 18px; cursor: pointer; user-select: none;
+            -webkit-tap-highlight-color: transparent; transition: color 0.1s;
+        }
+        .search-clear-btn:hover { color: #ff8c00; }
+
+        .input-group { margin-bottom: 14px; transition: opacity 0.3s ease, filter 0.3s ease; }
+        .input-group.dimmed { opacity: 0.32; filter: grayscale(40%); }
+        .input-row { display: flex; gap: 10px; }
+        .input-row > div { flex: 1; transition: all 0.2s ease; }
+        
+        label {
+            display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px;
+            color: #cfc5b0; font-weight: 700; transition: color 0.2s ease;
+        }
+        
+        input {
+            width: 100%; padding: 9px 10px; box-sizing: border-box; background: #1a1a1a;
+            border: 1px solid #443c2f; color: #fff; border-radius: 3px; font-size: 16px; 
+            font-weight: 600; transition: all 0.2s ease; transform-origin: left center;
+        }
+        input::placeholder { color: #666; font-size: 14px; font-weight: 400; }
+        input:focus {
+            background: #22201c;
+            border-color: #ff8c00;
+            color: #ffffff; outline: none; transform: scale(1.015);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 8px rgba(255, 140, 0, 0.3);
+        }
+
+        input.active-primary {
+            background: #2a221a !important;
+            border-color: #ff9800 !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 10px rgba(255, 140, 0, 0.25);
+        }
+        input.active-secondary {
+            background: #221811 !important;
+            border-color: #e67300 !important;
+            color: #f0f0f0 !important;
+        }
+
+        @keyframes highlightInput {
+            0% { background: #1a1a1a; border-color: #443c2f; box-shadow: none; }
+            30% { background: #2a221a; border-color: #ff9800; box-shadow: 0 0 12px rgba(255, 140, 0, 0.4); color: #fff; }
+            100% { background: #1a1a1a; border-color: #443c2f; box-shadow: none; }
+        }
+        .highlight-pulse input { animation: highlightInput 0.5s ease-out; }
+        input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+        
+        .btn-row { display: flex; gap: 6px; margin-top: 2px; }
+        
+        .quick-btn {
+            background: #333333; 
+            border: 1px solid #555555; 
+            color: #b0b0b0; 
+            padding: 6px 10px; 
+            border-radius: 3px; cursor: pointer;
+            font-size: 13px; font-weight: 600; flex: 1; min-width: 0; transition: background 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s;
+            -webkit-tap-highlight-color: transparent; position: relative; text-align: center;
+        }
+        .quick-btn:hover { background: #383838; color: #ffffff; border-color: #777; }
+        .quick-btn.active {
+            background: linear-gradient(135deg, #ff9800 0%, #ffb347 100%);
+            color: #121212;
+            border-color: #ff9800;
+            font-weight: 800;
+            box-shadow: 0 2px 8px rgba(255, 140, 0, 0.4);
+        }
+        .gray-x-btn.active { background: #333333 !important; color: #777 !important; border-color: #444 !important; box-shadow: none !important; cursor: default; }
+
+        #armorRow .quick-btn {
+            padding: 5px 10px; 
+        }
+
+        #grpFlag .quick-btn {
+            padding: 11px 10px;
+            font-size: 14px;
+        }
+
+        .quick-btn::after, .action-btn.clickable::after, .btn-remove::after { content: ''; position: absolute; z-index: 1; }
+        .quick-btn::after { top: -12px; bottom: -12px; left: -2.5px; right: -2.5px; }
+        .action-btn.clickable::after { top: -10px; bottom: -10px; left: -10px; right: -10px; }
+        .btn-remove::after { top: -12px; bottom: -12px; left: -12px; right: -12px; }
+        
+        .section-divider {
+            margin: 18px 0 12px 0; font-size: 12px; color: #9a8f7c; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; transition: opacity 0.3s;
+        }
+        .section-divider.dimmed { opacity: 0.35; }
+        .section-divider::before, .section-divider::after { content: ""; flex: 1; border-bottom: 1px solid #3a3225; }
+        .section-divider::before { margin-right: 10px; }
+        .section-divider::after { margin-left: 10px; }
+
+        .result-box {
+            margin-top: auto; background: #161616; padding: 18px 12px; border-radius: 4px; text-align: center; border: 1px solid #3c3427; transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .result-box.highlight { 
+            border-color: #ff9800; 
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.2), inset 0 0 10px rgba(255, 140, 0, 0.08); 
+        }
+        .result-title { font-size: 13px; color: #c0b49c; font-weight: bold; margin-bottom: 5px; }
+        .result-value { 
+            font-size: 30px; font-weight: 800; margin-top: 4px; line-height: 1; 
+            background: linear-gradient(135deg, #fff 0%, #ff9800 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 8px rgba(255, 140, 0, 0.4);
+        }
+        .result-decimal { color: #a4967a; font-weight: 600; font-size: 0.45em; } 
+
+        .preset-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 3px; overflow-y: auto; max-height: 345px; padding-right: 4px; padding-top: 2px;
+        }
+        
+        /* 💡 수정됨: 스크롤바 높이(height)를 6px로 추가하여 가로 스크롤바의 굵기를 세로와 동일하게 얇게 조절 */
+        .preset-grid::-webkit-scrollbar, .roster-list::-webkit-scrollbar { width: 6px; height: 9px; }
+        
+        .preset-grid::-webkit-scrollbar-thumb, .roster-list::-webkit-scrollbar-thumb { background: #4a4030; border-radius: 3px; }
+        .preset-grid::-webkit-scrollbar-thumb:hover, .roster-list::-webkit-scrollbar-thumb:hover { background: #6b5c45; }
+        
+        .unit-icon {
+            background: #1a1a1a; border: 1px solid #332c21; border-radius: 3px; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; backface-visibility: hidden; -webkit-font-smoothing: antialiased; transition: background 0.1s, border-color 0.1s, transform 0.1s, box-shadow 0.1s; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-touch-callout: none;
+        }
+        
+        .unit-icon:nth-child(4n+1) { transform: rotate(0.15deg); }
+        .unit-icon:nth-child(4n+2) { transform: rotate(-0.2deg); }
+        .unit-icon:nth-child(4n+3) { transform: rotate(0.1deg); }
+        .unit-icon:nth-child(4n+0) { transform: rotate(-0.1deg); }
+
+        .unit-icon:hover { 
+            background: #241a12; 
+            border-color: #cc6600; 
+            transform: scale(1.025) !important;
+        }
+        .unit-icon:active { transform: scale(0.98) !important; }
+        
+        .unit-icon.selected {
+            background: #2d2014 !important;
+            border-color: #ff9800 !important;
+            box-shadow: 0 0 12px rgba(255, 140, 0, 0.35);
+            transform: scale(1.02) !important;
+        }
+        .unit-icon.selected .name { color: #ffc470 !important; font-weight: bold; }
+        .unit-icon.selected .emoji { filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
+
+        .unit-icon img.unit-img { width: 65px; height: 68px; object-fit: contain; margin-bottom: 3px; pointer-events: none; }
+        .roster-item img.unit-img { pointer-events: none; }
+
+        .unit-icon .emoji { font-size: 22px; margin-bottom: 3px; }
+        .unit-icon .name { font-size: 10px; color: #c4b5a3; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; pointer-events: none; }
+
+        .roster-list { flex: 1; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; overflow-y: auto; max-height: 300px; padding-right: 4px; }
+        
+        .roster-item { 
+            background: #262626; border: 1px solid #4a4233; border-radius: 4px; padding: 12px 14px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            animation: fadeIn 0.15s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s ease, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .roster-item:hover { background: #2a2a2a; border-color: #5c5240; }
+        .roster-item:active { transform: scale(0.99); } 
+        
+        .roster-item.editing {
+            border-color: #3a3a3a;  /* 아주 아주 약간 진한 테두리 */
+            background: #2c2c2c;  /* 더 짙은 회색 톤으로 변경 */
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .roster-info { display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+        .roster-name { font-size: 14px; color: #ffffff; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .roster-name img.unit-img { width: 20px; height: 20px; margin-bottom: 0; }
+        
+        .roster-count { color: #ff9800; font-weight: 800; margin-left: 3px; }
+        .roster-stats { font-size: 12px; color: #9a8f7c; margin-top: -1px; }
+        
+        .btn-remove { background: transparent; border: none; color: #888; font-size: 18px; font-weight: bold; cursor: pointer; padding: 4px 8px; margin-left: 6px; transition: color 0.1s; position: relative; }
+        .btn-remove:hover { color: #ff5252; }
+        
+        .empty-roster { text-align: center; color: #6b604e; font-size: 13px; font-weight: 600; padding: 30px 0; font-style: italic; }
+    </style>
+</head>
+<body oncontextmenu="return false" ondragstart="return false">
+    <div class="dashboard-wrapper">
+        
+        <!-- [패널 1] 유닛 사전 (프리셋) -->
+        <div class="panel panel-preset">
+            <div class="header-row">
+                <h2 id="titlePreset">유닛 사전</h2>
+            </div>
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <input type="text" id="unitSearchInput" class="search-input" placeholder="유닛 검색 (영문 철자 입력)..." oninput="filterPresets()">
+                    <div class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()">&times;</div>
+                </div>
+            </div>
+            <div class="preset-grid" id="presetGrid"></div>
+        </div>
+
+        <!-- [패널 2] 상세 설정 -->
+        <div class="panel panel-calculator">
+            <div class="header-row">
+                <h2 id="titleCalc">상세 설정</h2>
+                <div class="top-btns">
+                    <button type="button" class="action-btn clickable" onpointerdown="toggleLanguage()">EN / KO</button>
+                    <div class="action-btn reset-container">
+                        <span class="reset-hitbox" onclick="resetAll()" id="btnResetText">전체 초기화</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-group" id="grpFirepower">
+                <label for="firepower">
+                    <span id="lblFirepower">유닛 화력 (x)</span>
+                    <span id="selectedUnitName" style="color: #ff9800; font-size: 12px;">직접 입력</span>
+                </label>
+                <input type="number" id="firepower" placeholder="power" value="" min="0" oninput="onManualFirepowerEdit()">
+            </div>
+
+            <div class="input-group" id="grpCount">
+                <div class="input-row">
+                    <div>
+                        <label for="count" id="lblCount">유닛수 (N)</label>
+                        <input type="number" id="count" placeholder="(basic 1)" value="" min="1" oninput="onCountOrGroupChange()">
+                    </div>
+                    <div>
+                        <label for="groupCount" id="lblGroup">그룹수 (G)</label>
+                        <input type="number" id="groupCount" placeholder="(basic 1)" value="" min="1" oninput="onCountOrGroupChange()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group" id="grpReload">
+                <label id="lblReload">곡사포 리로드 (초)</label>
+                <div class="btn-row">
+                    <button type="button" class="quick-btn gray-x-btn active" id="btnReloadX" onpointerdown="setReloadX()">X</button>
+                    <input type="number" id="reloadInput" placeholder="n sec (X )" value="" min="0.1" step="0.1" oninput="handleReload()" style="flex: 3;">
+                </div>
+            </div>
+
+            <div class="section-divider" id="lblGlobalCond">적군 상태 (global)</div>
+
+            <div class="input-group" id="grpArmor">
+                <label id="lblArmor">Armor</label>
+                <div class="btn-row" id="armorRow">
+                    <button type="button" class="quick-btn active" onpointerdown="setArmor(1)">1</button>
+                    <button type="button" class="quick-btn" onpointerdown="setArmor(2)">2</button>
+                    <button type="button" class="quick-btn" onpointerdown="setArmor(3)">3</button>
+                    <button type="button" class="quick-btn" onpointerdown="setArmor(4)">4</button>
+                    <button type="button" class="quick-btn" onpointerdown="setArmor(5)">5</button>
+                    <button type="button" class="quick-btn" onpointerdown="setArmor(6)">6</button>
+                </div>
+            </div>
+
+            <div class="input-group" id="grpFlag" style="margin-bottom: 0;">
+                <label id="lblFlag">Flag</label>
+                <div class="btn-row">
+                    <button type="button" class="quick-btn active" id="flagOffBtn" onpointerdown="setFlag(false)" style="flex: 3;">OFF</button>
+                    <button type="button" class="quick-btn" id="flagOnBtn" onpointerdown="setFlag(true)" style="flex: 3;">ON</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- [패널 3] 부대 -->
+        <div class="panel panel-roster">
+            <div class="header-row">
+                <h2 id="titleRoster">부대</h2>
+            </div>
+            
+            <div class="roster-list" id="rosterList">
+                <div class="empty-roster" id="emptyRosterMsg">Made by KALINGA.</div>
+            </div>
+
+            <div class="result-box highlight">
+                <div class="result-title" id="lblResult">DPS (%)</div>
+                <div class="result-value" id="totalResult">0<span class="result-decimal">.00%</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let isFlagOn = false;
+        let currentArmor = 1;
+        let currentReload = 1;
+        let currentLang = localStorage.getItem('calcLang_v2') || 'en';
+        let roster = [];
+        let searchQuery = '';
+        
+        let currentEditIndex = -1;
+
+        const unitDB = [
+            { id: 'u1', name: 'Shilka', nameEn: 'Shilka', icon: '⚡', img: 'images/shilka.png', power: 20, reload: 1 },
+            { id: 'u2', name: 'Maly', nameEn: 'Maly', icon: '⚡', img: 'images/maly.png', power: 450, reload: 1 },
+            { id: 'u3', name: 'Brdm', nameEn: 'Brdm', icon: '⚡', img: 'images/brdm.png', power: 450, reload: 1 },
+            { id: 'u4', name: 'Strella', nameEn: 'Strella', icon: '⚡', img: 'images/strella.png', power: 100, reload: 1 },
+            { id: 'u5', name: 'Aml60', nameEn: 'Aml60', icon: '⚡', img: 'images/aml60.png', power: 60, reload: 1 },
+            { id: 'u6', name: 'M107', nameEn: 'M107', icon: '⚡', img: 'images/m107.png', power: 60000, reload: 7 },
+            { id: 'u7', name: 'Aml90', nameEn: 'Aml90', icon: '⚡', img: 'images/aml90.png', power: 900, reload: 3 },
+            { id: 'u8', name: 'Caesar', nameEn: 'Caesar', icon: '⚡', img: 'images/caesar.png', power: 6000, reload: 6 },
+            { id: 'u9', name: 'Gepard', nameEn: 'Gepard', icon: '⚡', img: 'images/gepard.png', power: 60, reload: 1 },
+            { id: 'u10', name: 'Tansam', nameEn: 'Tansam', icon: '⚡', img: 'images/tansam.png', power: 500, reload: 1 },
+            { id: 'u11', name: 'M163', nameEn: 'M163', icon: '⚡', img: 'images/m163.png', power: 200, reload: 1 },
+            { id: 'u12', name: 'Lar', nameEn: 'Lar', icon: '⚡', img: 'images/lar.png', power: 1400, reload: 1 },
+            { id: 'u13', name: 'M50', nameEn: 'M50', icon: '⚡', img: 'images/m50.png', power: 8000, reload: 5 },
+            { id: 'u14', name: 'T72', nameEn: 'T72', icon: '⚡', img: 'images/t72.png', power: 3000, reload: 5 },
+            { id: 'u15', name: 'Brdm2', nameEn: 'Brdm2', icon: '⚡', img: 'images/brdm2.png', power: 500, reload: 1 },
+            { id: 'u16', name: 'RJP', nameEn: 'RJP', icon: '⚡', img: 'images/rjp.png', power: 1450, reload: 5 },
+            { id: 'u17', name: 'Type70', nameEn: 'Type70', icon: '⚡', img: 'images/type70.png', power: 1000, reload: 1 },
+            { id: 'u18', name: 'Mata', nameEn: 'Mata', icon: '⚡', img: 'images/mata.png', power: 7500, reload: 6 },
+            { id: 'u19', name: 'T80', nameEn: 'T80', icon: '⚡', img: 'images/t80.png', power: 3250, reload: 5 },
+            { id: 'u20', name: 'Type87', nameEn: 'Type87', icon: '⚡', img: 'images/type87.png', power: 100, reload: 1 },
+            { id: 'u21', name: 'M1a1', nameEn: 'Mla1', icon: '⚡', img: 'images/m1a1.png', power: 2500, reload: 5 },
+            { id: 'u22', name: 'AMX', nameEn: 'AMX', icon: '⚡', img: 'images/amx.png', power: 10000, reload: 7 },
+            { id: 'u23', name: '2s7', nameEn: '2s7', icon: '⚡', img: 'images/2s7.png', power: 12500, reload: 9 },
+            { id: 'u24', name: '2k22', nameEn: '2k22', icon: '⚡', img: 'images/2k22.png', power: 800, reload: 1 },
+            { id: 'u25', name: 'M730', nameEn: 'M730', icon: '⚡', img: 'images/m730.png', power: 30000, reload: 1 },
+            { id: 'u26', name: 'Leo2', nameEn: 'Leo2', icon: '⚡', img: 'images/leo2.png', power: 2500, reload: 5 },
+            { id: 'u27', name: 'M270', nameEn: 'M270', icon: '⚡', img: 'images/m270.png', power: 150000, reload: 3 },
+            { id: 'u28', name: 'Smerch', nameEn: 'Smerch', icon: '⚡', img: 'images/smerch.png', power: 250000, reload: 4 },
+            { id: 'u29', name: 'Mig21', nameEn: 'Mig21', icon: '⚡', img: 'images/mig21.png', power: 30000, reload: 1 },
+            { id: 'u30', name: 'Mig23', nameEn: 'Mig23', icon: '⚡', img: 'images/mig23.png', power: 4000, reload: 1 },
+            { id: 'u31', name: 'F9F5', nameEn: 'F9F5', icon: '⚡', img: 'images/f9f5.png', power: 3000, reload: 3 },
+            { id: 'u32', name: 'L39', nameEn: 'L39', icon: '⚡', img: 'images/l39.png', power: 4000, reload: 3 },
+            { id: 'u33', name: 'F2', nameEn: 'F2', icon: '⚡', img: 'images/f2.png', power: 250000, reload: 1 },
+            { id: 'u34', name: 'F1c', nameEn: 'F1c', icon: '⚡', img: 'images/f1c.png', power: 1200, reload: 1 },
+            { id: 'u35', name: 'B58', nameEn: 'B58', icon: '⚡', img: 'images/b58.png', power: 42500, reload: 1 },
+            { id: 'u36', name: 'Vulkan', nameEn: 'Vulkan', icon: '⚡', img: 'images/vulkan.png', power: 875000, reload: 1 },
+            { id: 'u37', name: 'AlphaJet', nameEn: 'AlphaJet', icon: '⚡', img: 'images/alphajet.png', power: 6500, reload: 3 },
+            { id: 'u38', name: 'A10', nameEn: 'A-10', icon: '⚡', img: 'images/a10.png', power: 600, reload: 1 },
+            { id: 'u39', name: 'F16', nameEn: 'F16', icon: '⚡', img: 'images/f16.png', power: 4000, reload: 1 },
+            { id: 'u40', name: 'Yf', nameEn: 'Yf', icon: '⚡', img: 'images/yf.png', power: 30000, reload: 1 },
+            { id: 'u41', name: 'F18', nameEn: 'F18', icon: '⚡', img: 'images/f18.png', power: 10000, reload: 1 },
+            { id: 'u42', name: 'F117', nameEn: 'F-117', icon: '⚡', img: 'images/f117.png', power: 475000, reload: 1 },
+            { id: 'u43', name: 'Blimp', nameEn: 'Blimp', icon: '⚡', img: 'images/blimp.png', power: 75, reload: 1 },
+            { id: 'u44', name: 'Kiowa', nameEn: 'Kiowa', icon: '⚡', img: 'images/kiowa.png', power: 750, reload: 7 },
+            { id: 'u45', name: 'Uh1', nameEn: 'Uh1', icon: '⚡', img: 'images/uh1.png', power: 2500, reload: 5 },
+            { id: 'u46', name: 'Gazelle', nameEn: 'Gazelle', icon: '⚡', img: 'images/gazelle.png', power: 1200, reload: 7 },
+            { id: 'u47', name: 'S61', nameEn: 'S61', icon: '⚡', img: 'images/s61.png', power: 1200, reload: 1 },
+            { id: 'u48', name: 'Mh6', nameEn: 'Mh6', icon: '⚡', img: 'images/mh6.png', power: 1600, reload: 7 },
+            { id: 'u49', name: 'M24', nameEn: 'Mi24', icon: '⚡', img: 'images/mi24.png', power: 9750, reload: 1 },
+            { id: 'u50', name: 'Mi28', nameEn: 'Mi28', icon: '⚡', img: 'images/mi28.png', power: 11500, reload: 1 },
+            { id: 'u51', name: 'Ka26', nameEn: 'Ka26', icon: '⚡', img: 'images/ka26.png', power: 500, reload: 1 },
+            { id: 'u52', name: 'Uh60', nameEn: 'Uh60', icon: '⚡', img: 'images/uh60.png', power: 7500, reload: 1 },
+            { id: 'u53', name: 'Puma', nameEn: 'Puma', icon: '⚡', img: 'images/puma.png', power: 15000, reload: 1 },
+            { id: 'u54', name: 'Ah64', nameEn: 'AH-64', icon: '⚡', img: 'images/ah64.png', power: 12000, reload: 1 },
+            { id: 'u55', name: 'Scimitar', nameEn: 'Scimitar', icon: '⚡', img: 'images/scimitar.png', power: 90, reload: 1 },
+            { id: 'u56', name: 'Rhino', nameEn: 'Rhino', icon: '⚡', img: 'images/rhino.png', power: 6000, reload: 6 },
+            { id: 'u57', name: 'Bm21', nameEn: 'Bm20', icon: '⚡', img: 'images/bm20.png', power: 550, reload: 1 },
+            { id: 'u58', name: 'Scorp', nameEn: 'Scorp', icon: '⚡', img: 'images/scorp.png', power: 400, reload: 3 },
+            { id: 'u59', name: 'Dana', nameEn: 'Dana', icon: '⚡', img: 'images/dana.png', power: 6500, reload: 7 },
+            { id: 'u60', name: 'Leo', nameEn: 'Leo', icon: '⚡', img: 'images/leo.png', power: 1000, reload: 4 },
+            { id: 'u61', name: 'Ee9', nameEn: 'Ee9', icon: '⚡', img: 'images/ee9.png', power: 900, reload: 3 }
+        ];
+
+        const translations = {
+            ko: {
+                presetTitle: "유닛 사전", calcTitle: "상세 설정", rosterTitle: "부대",
+                reset: "전체 초기화", firepower: "유닛 화력 (x)", count: "유닛수 (N)", group: "그룹수 (G)",
+                reload: "곡사포 리로드 (초)", globalCond: "적군 상태 (global)", armor: "Armor", flag: "Flag",
+                resultTitle: "DPS (%)", emptyRoster: "Made by KALINGA.", manualInput: "직접 입력",
+                searchPlaceholder: "유닛 검색 (영문 철자 입력)..."
+            },
+            en: {
+                presetTitle: "<span class='orange-gradient-text'>Units</span>", 
+                calcTitle: "<span class='orange-gradient-text'>Setup</span>", 
+                rosterTitle: "<span class='orange-gradient-text'>Troop</span>",
+                reset: "Reset All", firepower: "Unit Power (x)", count: "Unit Count (N)", group: "Groups (G)",
+                reload: "Reload (sec)", globalCond: "Enemy Status (Global)", armor: "Armor", flag: "Flag",
+                resultTitle: "DPS (%)", emptyRoster: "Made by KALINGA.", manualInput: "Custom Input",
+                searchPlaceholder: "Search unit name..."
+            }
+        };
+
+        function init() {
+            applyLanguageUI();
+            renderPresets();
+            updateRosterUI();
+            updateCountUIState();
+        }
+
+        function applyLanguageUI() {
+            const t = translations[currentLang];
+            document.getElementById('titlePreset').innerHTML = t.presetTitle;
+            document.getElementById('titleCalc').innerHTML = t.calcTitle;
+            document.getElementById('titleRoster').innerHTML = t.rosterTitle;
+            document.getElementById('btnResetText').innerText = t.reset;
+            document.getElementById('lblFirepower').innerText = t.firepower;
+            document.getElementById('lblCount').innerText = t.count;
+            document.getElementById('lblGroup').innerText = t.group;
+            document.getElementById('lblReload').innerText = t.reload;
+            document.getElementById('lblGlobalCond').innerText = t.globalCond;
+            document.getElementById('lblArmor').innerText = t.armor;
+            document.getElementById('lblFlag').innerText = t.flag;
+            document.getElementById('lblResult').innerText = t.resultTitle;
+            document.getElementById('unitSearchInput').placeholder = t.searchPlaceholder;
+            
+            if (roster.length === 0) {
+                document.getElementById('selectedUnitName').innerText = t.manualInput;
+            } else if (currentEditIndex >= 0) {
+                const item = roster[currentEditIndex];
+                const uName = currentLang === 'ko' ? item.name : item.nameEn;
+                document.getElementById('selectedUnitName').innerText = `${item.icon} ${uName}`;
+            }
+        }
+
+        function updateCountUIState() {
+            const countInput = document.getElementById('count');
+            const groupInput = document.getElementById('groupCount');
+            if (roster.length > 0) {
+                countInput.classList.add('active-primary');
+                groupInput.classList.add('active-secondary');
+            } else {
+                countInput.classList.remove('active-primary');
+                groupInput.classList.remove('active-secondary');
+            }
+        }
+
+        function renderUnitIconHtml(unit) {
+            if (unit.img) {
+                return `<img src="${unit.img}" class="unit-img" alt="${unit.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="emoji" style="display:none;">${unit.icon}</div>`;
+            }
+            return `<div class="emoji">${unit.icon}</div>`;
+        }
+
+        function filterPresets() {
+            const input = document.getElementById('unitSearchInput');
+            searchQuery = input.value.toLowerCase().trim();
+            
+            const clearBtn = document.getElementById('searchClearBtn');
+            clearBtn.style.display = searchQuery.length > 0 ? 'flex' : 'none';
+
+            renderPresets();
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('unitSearchInput');
+            input.value = '';
+            input.focus();
+            filterPresets();
+        }
+
+        function renderPresets() {
+            const grid = document.getElementById('presetGrid');
+            grid.innerHTML = '';
+            
+            const filteredDB = unitDB.filter(unit => {
+                if (!searchQuery) return true;
+                return unit.name.toLowerCase().includes(searchQuery) || unit.nameEn.toLowerCase().includes(searchQuery);
+            });
+
+            filteredDB.forEach(unit => {
+                const nameStr = currentLang === 'ko' ? unit.name : unit.nameEn;
+                const isSelected = roster.some(item => item.unitId === unit.id);
+                
+                const div = document.createElement('div');
+                div.className = `unit-icon ${isSelected ? 'selected' : ''}`;
+                div.innerHTML = `${renderUnitIconHtml(unit)}<div class="name">${nameStr}</div>`;
+                
+                div.onclick = () => handleUnitToggle(unit);
+                grid.appendChild(div);
+            });
+        }
+
+        function populateEditFields(index) {
+            if (index < 0 || index >= roster.length) return;
+            const item = roster[index];
+
+            document.getElementById('firepower').value = item.firepower;
+            document.getElementById('count').value = item.count;
+            document.getElementById('groupCount').value = item.group;
+
+            if (item.reload > 1) {
+                document.getElementById('reloadInput').value = item.reload;
+                currentReload = item.reload;
+                document.getElementById('btnReloadX').classList.remove('active');
+            } else {
+                setReloadX();
+            }
+
+            const uName = currentLang === 'ko' ? item.name : item.nameEn;
+            document.getElementById('selectedUnitName').innerText = `${item.icon} ${uName}`;
+
+            const grpCount = document.getElementById('grpCount');
+            grpCount.classList.remove('highlight-pulse');
+            void grpCount.offsetWidth; 
+            grpCount.classList.add('highlight-pulse');
+
+            setDimmedUI(true);
+        }
+
+        function handleUnitToggle(unit) {
+            const existingIndex = roster.findIndex(item => item.unitId === unit.id);
+
+            if (existingIndex === -1) {
+                roster.push({
+                    unitId: unit.id,
+                    icon: unit.icon,
+                    img: unit.img,
+                    name: unit.name,
+                    nameEn: unit.nameEn,
+                    firepower: unit.power,
+                    count: 1,
+                    group: 1,
+                    reload: unit.reload
+                });
+                
+                currentEditIndex = roster.length - 1;
+                populateEditFields(currentEditIndex);
+            } else {
+                removeRosterItem(existingIndex);
+                return; 
+            }
+            
+            updateCountUIState();
+            renderPresets();
+            updateRosterUI();
+        }
+
+        function editRosterItem(index) {
+            if (index === currentEditIndex) {
+                const grpCount = document.getElementById('grpCount');
+                grpCount.classList.remove('highlight-pulse');
+                void grpCount.offsetWidth; 
+                grpCount.classList.add('highlight-pulse');
+                return;
+            }
+            currentEditIndex = index;
+            populateEditFields(index);
+            updateRosterUI(); 
+        }
+
+        function setDimmedUI(isDimmed) {
+            const dimmableIds = ['grpFirepower', 'grpReload'];
+            dimmableIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (isDimmed) el.classList.add('dimmed');
+                    else el.classList.remove('dimmed');
+                }
+            });
+        }
+
+        function onCountOrGroupChange() {
+            if (roster.length > 0 && currentEditIndex >= 0 && currentEditIndex < roster.length) {
+                const item = roster[currentEditIndex];
+                let count = parseInt(document.getElementById('count').value) || 1;
+                let groupCount = parseInt(document.getElementById('groupCount').value) || 1;
+
+                item.count = count;
+                item.group = groupCount;
+                updateRosterUI();
+            }
+        }
+
+        function onManualFirepowerEdit() {
+            document.getElementById('selectedUnitName').innerText = translations[currentLang].manualInput;
+            setDimmedUI(false);
+        }
+
+        function setArmor(level) {
+            currentArmor = level;
+            const buttons = document.querySelectorAll('#armorRow .quick-btn');
+            buttons.forEach((btn, idx) => btn.classList.toggle('active', idx + 1 === level));
+            updateRosterUI();
+        }
+
+        function setFlag(status) {
+            isFlagOn = status;
+            document.getElementById('flagOffBtn').classList.toggle('active', !status);
+            document.getElementById('flagOnBtn').classList.toggle('active', status);
+            updateRosterUI();
+        }
+
+        function setReloadX() {
+            currentReload = 1;
+            document.getElementById('reloadInput').value = '';
+            document.getElementById('btnReloadX').classList.add('active');
+            updateRosterUI();
+        }
+
+        function handleReload() {
+            const val = parseFloat(document.getElementById('reloadInput').value);
+            if (isNaN(val) || val <= 0) {
+                currentReload = 1;
+                document.getElementById('btnReloadX').classList.add('active');
+            } else {
+                currentReload = val;
+                document.getElementById('btnReloadX').classList.remove('active');
+            }
+            
+            if (roster.length > 0 && currentEditIndex >= 0 && currentEditIndex < roster.length) {
+                roster[currentEditIndex].reload = currentReload;
+            }
+            updateRosterUI();
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ko' ? 'en' : 'ko';
+            localStorage.setItem('calcLang_v2', currentLang);
+            
+            applyLanguageUI();
+            renderPresets();
+            updateRosterUI();
+        }
+
+        function resetAll() {
+            roster = [];
+            currentEditIndex = -1; 
+            currentArmor = 1;
+            isFlagOn = false;
+            currentReload = 1;
+            searchQuery = '';
+
+            document.getElementById('firepower').value = '';
+            document.getElementById('count').value = ''; 
+            document.getElementById('groupCount').value = '';
+            document.getElementById('reloadInput').value = '';
+            document.getElementById('unitSearchInput').value = '';
+            
+            document.getElementById('searchClearBtn').style.display = 'none';
+
+            document.getElementById('selectedUnitName').innerText = translations[currentLang].manualInput;
+
+            setDimmedUI(false);
+            setArmor(1);
+            setFlag(false);
+            setReloadX();
+            updateCountUIState();
+            renderPresets();
+            updateRosterUI();
+        }
+
+        function removeRosterItem(index, event) {
+            if (event) event.stopPropagation(); 
+            
+            roster.splice(index, 1);
+            
+            if (roster.length === 0) {
+                currentEditIndex = -1;
+                setDimmedUI(false);
+                document.getElementById('selectedUnitName').innerText = translations[currentLang].manualInput;
+                document.getElementById('firepower').value = '';
+                document.getElementById('count').value = ''; 
+                document.getElementById('groupCount').value = '';
+                setReloadX();
+            } else {
+                if (index === currentEditIndex) {
+                    currentEditIndex = roster.length - 1;
+                    populateEditFields(currentEditIndex);
+                } else if (index < currentEditIndex) {
+                    currentEditIndex--;
+                }
+            }
+            
+            updateCountUIState();
+            renderPresets();
+            updateRosterUI();
+        }
+
+        function updateRosterUI() {
+            const rosterList = document.getElementById('rosterList');
+            const totalResult = document.getElementById('totalResult');
+            const t = translations[currentLang];
+
+            if (roster.length === 0) {
+                rosterList.innerHTML = `<div class="empty-roster" id="emptyRosterMsg">${t.emptyRoster}</div>`;
+                totalResult.innerHTML = `0<span class="result-decimal">.00%</span>`;
+                return;
+            }
+
+            rosterList.innerHTML = '';
+            
+            let totalEffectivePower = 0;
+            let flagMultiplier = isFlagOn ? 10 : 1; 
+            const CORE_CONSTANT = 11; 
+
+            roster.forEach(item => {
+                let effectiveReload = item.reload || 1;
+                let rawPower = item.firepower * (item.count || 1) * (item.group || 1);
+                totalEffectivePower += rawPower / Math.pow(effectiveReload, 2);
+            });
+
+            let grandTotalDPS = Math.sqrt(totalEffectivePower) / (currentArmor * flagMultiplier * CORE_CONSTANT);
+
+            roster.forEach((item, index) => {
+                let effectiveReload = item.reload || 1;
+                let rawPower = item.firepower * (item.count || 1) * (item.group || 1);
+                
+                let standaloneDPS = (Math.sqrt(rawPower) / effectiveReload) / (currentArmor * flagMultiplier * CORE_CONSTANT);
+
+                const nameStr = currentLang === 'ko' ? item.name : item.nameEn;
+                const statsLabel = currentLang === 'ko' 
+                    ? `그룹: ${item.group || 1} | 리로드: ${effectiveReload}s` 
+                    : `Groups: ${item.group || 1} | Reload: ${effectiveReload}s`;
+                const standaloneLabel = currentLang === 'ko' ? '단독' : 'Solo';
+
+                const div = document.createElement('div');
+                div.className = `roster-item ${index === currentEditIndex ? 'editing' : ''}`;
+                
+                div.setAttribute('onpointerdown', `editRosterItem(${index})`);
+                
+                div.innerHTML = `
+                    <div class="roster-info">
+                        <div class="roster-name">
+                            ${renderUnitIconHtml(item)}
+                            ${nameStr} <span class="roster-count">x${item.count || 1}</span>
+                        </div>
+                        <div class="roster-stats">${statsLabel}</div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 8px;">
+                            <div style="font-size: 15px; color: #bcae94; font-weight: bold; line-height: 1;">${standaloneDPS.toLocaleString(undefined, {maximumFractionDigits: 1})}</div>
+                            <div style="font-size: 10px; color: #786d58; margin-top: 2px;">(${standaloneLabel})</div>
+                        </div>
+                        <button class="btn-remove" onpointerdown="removeRosterItem(${index}, event)">&times;</button>
+                    </div>
+                `;
+                rosterList.appendChild(div);
+            });
+
+            let intPart = Math.floor(grandTotalDPS).toLocaleString();
+            let decPart = ((grandTotalDPS % 1).toFixed(2)).substring(1);
+            totalResult.innerHTML = `${intPart}<span class="result-decimal">${decPart}%</span>`;
+        }
+        
+        init();
+    </script>
+</body>
+</html>
